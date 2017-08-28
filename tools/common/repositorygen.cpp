@@ -424,11 +424,10 @@ PackageInfoVector QInstallerTools::createListOfPackages(const QStringList &packa
         qDebug() << "Found subdirectory" << it->fileName();
         // because the filter is QDir::Dirs - filename means the name of the subdirectory
         if (it->fileName().contains(QLatin1Char('-'))) {
-            if (ignoreInvalidPackages)
-                continue;
-            throw QInstaller::Error(QString::fromLatin1("Component \"%1\" must not contain '-'. This is not "
-                "allowed, because dashes are used as the separator between the component name and the "
-                "version number internally.").arg(QDir::toNativeSeparators(it->fileName())));
+            qDebug("When using the component \"%s\" as a dependency, "
+                "to ensure backward compatibility, you must add a colon symbol at the end, "
+                "even if you do not specify a version.",
+                qPrintable(it->fileName()));
         }
 
         QFile file(QString::fromLatin1("%1/meta/package.xml").arg(it->filePath()));
@@ -481,7 +480,7 @@ PackageInfoVector QInstallerTools::createListOfPackages(const QStringList &packa
         PackageInfo info;
         info.name = it->fileName();
         info.version = packageElement.firstChildElement(QLatin1String("Version")).text();
-        if (!QRegExp(QLatin1String("[0-9]+((\\.|-)[0-9]+)*")).exactMatch(info.version)) {
+        if (info.version.startsWith(QLatin1Char('=')) || info.version.contains(QRegExp(QLatin1String("[<:>\\\\/]")))) {
             if (ignoreInvalidPackages)
                 continue;
             throw QInstaller::Error(QString::fromLatin1("Component version for \"%1\" is invalid! <Version>%2</Version>")

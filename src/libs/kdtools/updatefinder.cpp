@@ -591,20 +591,25 @@ int KDUpdater::compareVersion(const QString &v1, const QString &v2)
         return 0;
 
     // Split version numbers across "."
-    const QStringList v1_comps = v1.split(QRegExp(QLatin1String( "\\.|-")));
-    const QStringList v2_comps = v2.split(QRegExp(QLatin1String( "\\.|-")));
+    QStringList v1_comps = v1.split(QRegExp(QLatin1String( "\\.|-|_")));
+    QStringList v2_comps = v2.split(QRegExp(QLatin1String( "\\.|-|_")));
 
     // Check each component of the version
     int index = 0;
     while (true) {
-        if (index == v1_comps.count() && index < v2_comps.count())
-            return -1;
-        if (index < v1_comps.count() && index == v2_comps.count())
-            return +1;
+        bool v1_ok, v2_ok;
+
+        if (index == v1_comps.count() && index < v2_comps.count()) {
+            v2_comps[index].toInt(&v2_ok);
+            return v2_ok ? -1 : +1;
+        }
+        if (index < v1_comps.count() && index == v2_comps.count()) {
+            v1_comps[index].toInt(&v1_ok);
+            return v1_ok ? +1 : -1;
+        }
         if (index >= v1_comps.count() || index >= v2_comps.count())
             break;
 
-        bool v1_ok, v2_ok;
         int v1_comp = v1_comps[index].toInt(&v1_ok);
         int v2_comp = v2_comps[index].toInt(&v2_ok);
 
@@ -616,8 +621,30 @@ int KDUpdater::compareVersion(const QString &v1, const QString &v2)
             if (v2_comps[index] == QLatin1String("x"))
                 return 0;
         }
-        if (!v1_ok && !v2_ok)
-            return v1_comps[index].compare(v2_comps[index]);
+        if (!v1_ok && !v2_ok) {
+            // try remove equal start
+            int i = 0;
+            while (i < v1_comps[index].size()
+                && i < v2_comps[index].size()
+                && v1_comps[index][i] == v2_comps[index][i]) {
+                ++i;
+            }
+            if (i > 0) {
+                v1_comps[index] = v1_comps[index].mid(i);
+                v2_comps[index] = v2_comps[index].mid(i);
+                // compare again
+                continue;
+            }
+        }
+        if (!v1_ok || !v2_ok) {
+            int res = v1_comps[index].compare(v2_comps[index]);
+            if (res == 0) {
+                // v1_comps[index] == v2_comps[index]
+                ++index;
+                continue;
+            }
+            return res > 0 ? +1 : -1;
+        }
 
         if (v1_comp < v2_comp)
             return -1;

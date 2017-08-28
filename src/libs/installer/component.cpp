@@ -1170,6 +1170,22 @@ QStringList Component::dependencies() const
     return d->m_vars.value(scDependencies).split(QInstaller::commaRegExp(), QString::SkipEmptyParts);
 }
 
+/*!
+    Adds the component specified by \a newDependOn to the automatic dependency on list.
+
+    \sa {component::addAutoDependOn}{component.addAutoDependOn}
+    \sa dependencies
+*/
+
+void Component::addAutoDependOn(const QString &newDependOn)
+{
+    QString oldDependOn = d->m_vars.value(scAutoDependOn);
+    if (oldDependOn.isEmpty())
+        setValue(scAutoDependOn, newDependOn);
+    else
+        setValue(scAutoDependOn, oldDependOn + QLatin1String(", ") + newDependOn);
+}
+
 QStringList Component::autoDependencies() const
 {
     return d->m_vars.value(scAutoDependOn).split(QInstaller::commaRegExp(), QString::SkipEmptyParts);
@@ -1194,7 +1210,7 @@ bool Component::isAutoDependOn(const QSet<QString> &componentsToInstall) const
 {
     // If there is no auto depend on value or the value is empty, we have nothing todo. The component does
     // not need to be installed as an auto dependency.
-    QStringList autoDependOnList = autoDependencies();
+    QStringList autoDependOnList = PackageManagerCore::parseNames(autoDependencies());
     if (autoDependOnList.isEmpty())
         return false;
 
@@ -1202,7 +1218,6 @@ bool Component::isAutoDependOn(const QSet<QString> &componentsToInstall) const
     const QStringList installedPackages = d->m_core->localInstalledPackages().keys();
     foreach (const QString &name, installedPackages)
         components.insert(name);
-
     foreach (const QString &component, components) {
         autoDependOnList.removeAll(component);
         if (autoDependOnList.isEmpty()) {
